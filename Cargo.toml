@@ -2,7 +2,7 @@
 name = "solana-winternitz"
 description = "224-bit Keccak-based Winternitz signatures for Solana"
 authors = ["Dean Little <@deanmlittle>"]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 

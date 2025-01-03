@@ -54,10 +54,6 @@ impl WinternitzPrivkey {
         }))
     }
 
-    /// # Signature Generation
-    /// 
-    /// 1. Alice hashes the message using Keccak-256 which produces a 256-bit digest. This digest is split up into 32 8-bit values (N1, N2, …, N32).
-    /// 2. Alice hashes each of the 8-bit value 256-N times, where N is the value of the 8-bit value. For example, if N1 is the 8-bit value is 10001000 = 136, then N1 would be hashed 256-136 = 120 times. After doing this for each of the 8-bit values, the digital signature is generated.
     pub fn sign(&self, message: &[u8]) -> WinternitzSignature {
         let digest = hash(message);
 

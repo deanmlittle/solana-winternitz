@@ -1,6 +1,6 @@
 [package]
 name = "solana-winternitz"
-description = "Keccak-based Winternitz signatures for Solana"
+description = "Winternitz signatures for Solana"
 authors = ["Dean Little <@deanmlittle>"]
 version = "0.2.0"
 edition = "2021"

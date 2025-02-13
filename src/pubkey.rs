@@ -1,98 +1,80 @@
-use solana_nostd_keccak::{hash, hashv};
+use solana_nostd_sha256::hashv;
 
-#[cfg(not(target_os = "solana"))]
-use crate::privkey::WinternitzPrivkey;
+use crate::HASH_LENGTH;
 
 #[repr(C)]
 #[derive(PartialEq)]
-pub struct WinternitzPubkey([[u8;crate::HASH_LENGTH];32]);
+pub struct WinternitzPubkey {
+    data: [[u8; HASH_LENGTH]; 32],
+}
 
 impl core::fmt::Debug for WinternitzPubkey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_tuple("WinternitzPubkey")
-            .field(&self.0.iter().map(|hash| {
-                hash.iter().map(|byte| format!("{:02x}", byte)).collect::<String>()
-            }).collect::<Vec<_>>())
+            .field(
+                &self
+                    .data
+                    .iter()
+                    .map(|hash| {
+                        hash.iter()
+                            .map(|byte| format!("{:02x}", byte))
+                            .collect::<String>()
+                    })
+                    .collect::<Vec<_>>(),
+            )
             .finish()
     }
 }
 
 impl WinternitzPubkey {
-    pub fn hash(&self) -> [u8;32] {
-        hash(&self.0.concat())
+    pub fn hashes(&self) -> [[u8; HASH_LENGTH]; 32] {
+        self.data
     }
 
-    pub fn merklize(&self) -> [u8;32] {
-        hashv(&[
-            &hashv(&[
-                &hashv(&[
-                    &hashv(&[
-                        &hashv(&[&self.0[0], &self.0[1]]), 
-                        &hashv(&[&self.0[2], &self.0[3]]), 
-                    ]),
-                    &hashv(&[
-                        &hashv(&[&self.0[4], &self.0[5]]), 
-                        &hashv(&[&self.0[6], &self.0[7]]),
-                    ]),
-                ]),
-                &hashv(&[
-                    &hashv(&[
-                        &hashv(&[&self.0[8], &self.0[9]]), 
-                        &hashv(&[&self.0[10], &self.0[11]]), 
-                    ]),
-                    &hashv(&[
-                        &hashv(&[&self.0[12], &self.0[13]]), 
-                        &hashv(&[&self.0[14], &self.0[15]]),
-                    ]),
-                ]),
-            ]),
-            &hashv(&[
-                &hashv(&[
-                    &hashv(&[
-                        &hashv(&[&self.0[16], &self.0[17]]), 
-                        &hashv(&[&self.0[18], &self.0[19]]), 
-                    ]),
-                    &hashv(&[
-                        &hashv(&[&self.0[20], &self.0[21]]), 
-                        &hashv(&[&self.0[22], &self.0[23]]),
-                    ]),
-                ]),
-                &hashv(&[
-                    &hashv(&[
-                        &hashv(&[&self.0[24], &self.0[25]]), 
-                        &hashv(&[&self.0[26], &self.0[27]]), 
-                    ]),
-                    &hashv(&[
-                        &hashv(&[&self.0[28], &self.0[29]]), 
-                        &hashv(&[&self.0[30], &self.0[31]])    
-                    ]), 
-                ])  
-            ]) 
-        ])
+    // Your public interface remains the same
+    pub fn merklize(&self) -> [u8; HASH_LENGTH] {
+        let left = self.merklize_first_half();
+        let right = self.merklize_second_half();
+        Self::hash_node_pair(&left, &right)
+    }
+
+    #[inline]
+    pub fn merklize_first_half(&self) -> [u8; HASH_LENGTH] {
+        Self::hash_node_pair(&&self.merklize_quarter(0), &&self.merklize_quarter(8))
+    }
+
+    #[inline]
+    pub fn merklize_second_half(&self) -> [u8; HASH_LENGTH] {
+        Self::hash_node_pair(&&self.merklize_quarter(16), &&self.merklize_quarter(24))
+    }
+
+    #[inline]
+    fn hash_leaf_pair(&self, i: usize) -> [u8; HASH_LENGTH] {
+        hashv(&[&self.data[i], &self.data[i + 1]])
+    }
+
+    #[inline]
+    fn hash_node_pair(left: &[u8; HASH_LENGTH], right: &[u8; HASH_LENGTH]) -> [u8; HASH_LENGTH] {
+        hashv(&[left, right])
+    }
+
+    #[inline]
+    fn merklize_eighth(&self, start_idx: usize) -> [u8; HASH_LENGTH] {
+        let h1 = self.hash_leaf_pair(start_idx);
+        let h2 = self.hash_leaf_pair(start_idx + 2);
+        Self::hash_node_pair(&h1, &h2)
+    }
+
+    #[inline]
+    fn merklize_quarter(&self, start_idx: usize) -> [u8; HASH_LENGTH] {
+        let left = self.merklize_eighth(start_idx);
+        let right = self.merklize_eighth(start_idx + 4);
+        Self::hash_node_pair(&left, &right)
     }
 }
 
-impl From<[u8;crate::HASH_LENGTH*32]> for WinternitzPubkey {
-    fn from(value: [u8;crate::HASH_LENGTH*32]) -> Self {
-        unsafe { core::mem::transmute(value) }
-    }
-}
-
-impl Into<[u8;crate::HASH_LENGTH*32]> for WinternitzPubkey {
-    fn into(self) -> [u8;crate::HASH_LENGTH*32] {
-        unsafe { core::mem::transmute(self) }
-    }
-}
-
-impl From<[[u8;crate::HASH_LENGTH];32]> for WinternitzPubkey {
-    fn from(seeds: [[u8;crate::HASH_LENGTH];32]) -> Self {
-        Self(seeds)
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl From<WinternitzPrivkey> for WinternitzPubkey {
-    fn from(key: WinternitzPrivkey) -> Self {
-        key.pubkey()
+impl From<[[u8; HASH_LENGTH]; 32]> for WinternitzPubkey {
+    fn from(value: [[u8; HASH_LENGTH]; 32]) -> Self {
+        Self { data: value }
     }
 }

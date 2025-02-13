@@ -1,6 +1,5 @@
-use solana_nostd_sha256::hashv;
-
-use crate::HASH_LENGTH;
+use crate::{hash::Hash, HASH_LENGTH};
+use core::fmt::Write;
 
 #[repr(C)]
 #[derive(PartialEq)]
@@ -17,8 +16,10 @@ impl core::fmt::Debug for WinternitzPubkey {
                     .iter()
                     .map(|hash| {
                         hash.iter()
-                            .map(|byte| format!("{:02x}", byte))
-                            .collect::<String>()
+                            .fold(String::with_capacity(HASH_LENGTH * 2), |mut acc, byte| {
+                                write!(acc, "{:02x}", byte).unwrap();
+                                acc
+                            })
                     })
                     .collect::<Vec<_>>(),
             )
@@ -32,44 +33,53 @@ impl WinternitzPubkey {
     }
 
     // Your public interface remains the same
-    pub fn merklize(&self) -> [u8; HASH_LENGTH] {
-        let left = self.merklize_first_half();
-        let right = self.merklize_second_half();
-        Self::hash_node_pair(&left, &right)
+    pub fn merklize<H: Hash>(&self) -> [u8; HASH_LENGTH] {
+        let left = self.merklize_first_half::<H>();
+        let right = self.merklize_second_half::<H>();
+        Self::hash_node_pair::<H>(&left, &right)
     }
 
     #[inline]
-    pub fn merklize_first_half(&self) -> [u8; HASH_LENGTH] {
-        Self::hash_node_pair(&&self.merklize_quarter(0), &&self.merklize_quarter(8))
+    pub fn merklize_first_half<H: Hash>(&self) -> [u8; HASH_LENGTH] {
+        Self::hash_node_pair::<H>(
+            &self.merklize_quarter::<H>(0),
+            &self.merklize_quarter::<H>(8),
+        )
     }
 
     #[inline]
-    pub fn merklize_second_half(&self) -> [u8; HASH_LENGTH] {
-        Self::hash_node_pair(&&self.merklize_quarter(16), &&self.merklize_quarter(24))
+    pub fn merklize_second_half<H: Hash>(&self) -> [u8; HASH_LENGTH] {
+        Self::hash_node_pair::<H>(
+            &self.merklize_quarter::<H>(16),
+            &self.merklize_quarter::<H>(24),
+        )
     }
 
     #[inline]
-    fn hash_leaf_pair(&self, i: usize) -> [u8; HASH_LENGTH] {
-        hashv(&[&self.data[i], &self.data[i + 1]])
+    fn hash_leaf_pair<H: Hash>(&self, i: usize) -> [u8; HASH_LENGTH] {
+        H::hashv(&[&self.data[i], &self.data[i + 1]])
     }
 
     #[inline]
-    fn hash_node_pair(left: &[u8; HASH_LENGTH], right: &[u8; HASH_LENGTH]) -> [u8; HASH_LENGTH] {
-        hashv(&[left, right])
+    fn hash_node_pair<H: Hash>(
+        left: &[u8; HASH_LENGTH],
+        right: &[u8; HASH_LENGTH],
+    ) -> [u8; HASH_LENGTH] {
+        H::hashv(&[left, right])
     }
 
     #[inline]
-    fn merklize_eighth(&self, start_idx: usize) -> [u8; HASH_LENGTH] {
-        let h1 = self.hash_leaf_pair(start_idx);
-        let h2 = self.hash_leaf_pair(start_idx + 2);
-        Self::hash_node_pair(&h1, &h2)
+    fn merklize_eighth<H: Hash>(&self, start_idx: usize) -> [u8; HASH_LENGTH] {
+        let h1 = self.hash_leaf_pair::<H>(start_idx);
+        let h2 = self.hash_leaf_pair::<H>(start_idx + 2);
+        Self::hash_node_pair::<H>(&h1, &h2)
     }
 
     #[inline]
-    fn merklize_quarter(&self, start_idx: usize) -> [u8; HASH_LENGTH] {
-        let left = self.merklize_eighth(start_idx);
-        let right = self.merklize_eighth(start_idx + 4);
-        Self::hash_node_pair(&left, &right)
+    fn merklize_quarter<H: Hash>(&self, start_idx: usize) -> [u8; HASH_LENGTH] {
+        let left = self.merklize_eighth::<H>(start_idx);
+        let right = self.merklize_eighth::<H>(start_idx + 4);
+        Self::hash_node_pair::<H>(&left, &right)
     }
 }
 

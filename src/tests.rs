@@ -1,7 +1,6 @@
 use crate::{
     hash::{Keccak, Sha256},
     privkey::WinternitzPrivkey,
-    pubkey::{self, WinternitzPubkey},
 };
 
 pub const TEST_MESSAGE: [u8; 4] = *b"test";
@@ -14,9 +13,11 @@ fn keygen() {
 #[test]
 fn keygen_sign_verify() {
     let privkey = WinternitzPrivkey::generate();
-    let hash = privkey.pubkey::<Sha256>().merklize();
+    let hash = privkey.pubkey::<Sha256>().merklize::<Sha256>();
     let signature = privkey.sign::<Sha256>(&TEST_MESSAGE);
-    let recovered_hash = signature.recover_pubkey::<Sha256>(&TEST_MESSAGE).merklize();
+    let recovered_hash = signature
+        .recover_pubkey::<Sha256>(&TEST_MESSAGE)
+        .merklize::<Sha256>();
     assert_eq!(hash, recovered_hash)
 }
 
@@ -94,11 +95,11 @@ fn keygen_from_test() {
         0x00, 0x00, 0x00, 0x20,
     ]);
 
-    let pubkey = privkey.pubkey::<Keccak>().merklize();
+    let pubkey = privkey.pubkey::<Keccak>().merklize::<Sha256>();
 
     let sig = privkey.sign::<Keccak>(b"test");
 
-    let recovered_key = sig.recover_pubkey::<Keccak>(b"test").merklize();
+    let recovered_key = sig.recover_pubkey::<Keccak>(b"test").merklize::<Sha256>();
 
     assert_eq!(pubkey, recovered_key);
 }

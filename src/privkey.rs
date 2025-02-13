@@ -1,6 +1,7 @@
 use crate::{
     hash::Hash, pubkey::WinternitzPubkey, signature::WinternitzSignature, HASH_LENGTH, KEY_LENGTH,
 };
+use core::fmt::Write;
 use core::mem::MaybeUninit;
 use rand::Rng;
 
@@ -18,8 +19,10 @@ impl core::fmt::Debug for WinternitzPrivkey {
                     .iter()
                     .map(|hash| {
                         hash.iter()
-                            .map(|byte| format!("{:02x}", byte))
-                            .collect::<String>()
+                            .fold(String::with_capacity(HASH_LENGTH * 2), |mut acc, byte| {
+                                write!(acc, "{:02x}", byte).unwrap();
+                                acc
+                            })
                     })
                     .collect::<Vec<_>>(),
             )
@@ -49,7 +52,7 @@ impl WinternitzPrivkey {
     pub fn generate() -> Self {
         let mut rng = rand::rng();
         // Generate 32 arrays of 32 random bytes each
-        let seeds: [[u8; HASH_LENGTH]; 32] = rng.gen();
+        let seeds: [[u8; HASH_LENGTH]; 32] = rng.random();
         Self { data: seeds }
     }
 

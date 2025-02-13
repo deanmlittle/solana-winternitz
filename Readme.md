@@ -6,7 +6,7 @@ An implementation of the Winternitz One-Time Signature (WOTS) scheme, designed f
 
 - Support for multiple hash functions (SHA-256 and Keccak)
 - Optimized Merkle tree computation
-- Memory-safe implementation using `MaybeUninit`
+- Memory-safe implementation using `MaybeUninit` and `transmute`
 - Fixed-size signatures and public keys
 
 ## Usage

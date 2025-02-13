@@ -1,3 +1,4 @@
+use core::fmt::Write;
 use core::mem::MaybeUninit;
 
 use solana_nostd_keccak::HASH_LENGTH;
@@ -31,8 +32,10 @@ impl core::fmt::Debug for WinternitzSignature {
                     .iter()
                     .map(|hash| {
                         hash.iter()
-                            .map(|byte| format!("{:02x}", byte))
-                            .collect::<String>()
+                            .fold(String::with_capacity(HASH_LENGTH * 2), |mut acc, byte| {
+                                write!(acc, "{:02x}", byte).unwrap();
+                                acc
+                            })
                     })
                     .collect::<Vec<_>>(),
             )

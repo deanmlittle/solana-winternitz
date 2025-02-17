@@ -1,6 +1,5 @@
 use crate::{
-    hash::{Keccak, Sha256},
-    privkey::WinternitzPrivkey,
+    hash::{Hash, Keccak, Sha256}, privkey::WinternitzPrivkey, signature::WinternitzSignature
 };
 
 pub const TEST_MESSAGE: [u8; 4] = *b"test";
@@ -19,6 +18,76 @@ fn keygen_sign_verify() {
         .recover_pubkey::<Sha256>(&TEST_MESSAGE)
         .merklize::<Sha256>();
     assert_eq!(hash, recovered_hash)
+}
+
+#[test]
+fn partial_signature_verify() {
+    let privkey = WinternitzPrivkey::generate();
+    let hash = privkey.pubkey::<Sha256>().merklize::<Sha256>();
+    let signature = privkey.sign::<Sha256>(&TEST_MESSAGE);
+    // Prehash the message
+    let message_hash = Sha256::hash(&TEST_MESSAGE);
+    // Calculate the pubkey based upon the message hash
+    let pubkey = signature.recover_pubkey_prehashed::<Sha256>(&message_hash);
+    // Calculate pairing hash
+    let pairing_hash = pubkey.merklize_eighth::<Sha256>(28);
+
+    // Calculate recovered pubkey
+    let recovered_pubkey = signature
+        .recover_pubkey::<Sha256>(&TEST_MESSAGE);
+
+    // Calculate recovered hash
+    let recovered_hash = recovered_pubkey
+        .merklize::<Sha256>();
+
+    assert_eq!(hash, recovered_hash);
+
+    // Mask hash in the contract to lower compute usage
+    let mut masked_hash = message_hash;
+    masked_hash[28] = 0x00;
+    masked_hash[29] = 0x00;
+    masked_hash[30] = 0x00;
+    masked_hash[31] = 0x00;
+
+    // Replicate the hash from a partial signature. First, we make a signature to recover a partial public key: 
+    let recovered_partial_pubkey = WinternitzSignature::from([
+        signature.data[0],
+        signature.data[1],
+        signature.data[2],
+        signature.data[3],
+        signature.data[4],
+        signature.data[5],
+        signature.data[6],
+        signature.data[7],
+        signature.data[8],
+        signature.data[9],
+        signature.data[10],
+        signature.data[11],
+        signature.data[12],
+        signature.data[13],
+        signature.data[14],
+        signature.data[15],
+        signature.data[16],
+        signature.data[17],
+        signature.data[18],
+        signature.data[19],
+        signature.data[20],
+        signature.data[21],
+        signature.data[22],
+        signature.data[23],
+        signature.data[24],
+        signature.data[25],
+        signature.data[26],
+        signature.data[27],
+        pairing_hash,
+        masked_hash,
+        [0u8;32],
+        [0u8;32],
+    ]).recover_pubkey_prehashed::<Sha256>(&message_hash);
+
+    let partial_root = recovered_partial_pubkey.merklize_partial::<Sha256>(pairing_hash);
+
+    assert_eq!(partial_root, hash);
 }
 
 #[test]

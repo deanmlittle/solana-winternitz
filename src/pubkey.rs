@@ -4,7 +4,7 @@ use core::fmt::Write;
 #[repr(C)]
 #[derive(PartialEq)]
 pub struct WinternitzPubkey {
-    data: [[u8; HASH_LENGTH]; 32],
+    pub data: [[u8; HASH_LENGTH]; 32],
 }
 
 impl core::fmt::Debug for WinternitzPubkey {
@@ -39,6 +39,25 @@ impl WinternitzPubkey {
         Self::hash_node_pair::<H>(&left, &right)
     }
 
+    // Assumes hash #30 is our pairing hash and hash #31 is unused
+    pub fn merklize_partial<H: Hash>(&self, pairing_hash: [u8;32]) -> [u8; HASH_LENGTH] {
+        // Merklize 0-15
+        let left = self.merklize_first_half::<H>();
+        // Pair right hashes
+        let right = Self::hash_node_pair::<H>(
+            // Third Quarter
+            &self.merklize_quarter::<H>(16),
+            // Fourth Quarter
+            &Self::hash_node_pair::<H>(
+                    // Second last eighth
+                    &self.merklize_eighth::<H>(24),    
+                    // Pairing hash        
+                    &pairing_hash
+                )
+        );
+        Self::hash_node_pair::<H>(&left, &right)
+    }
+
     #[inline]
     pub fn merklize_first_half<H: Hash>(&self) -> [u8; HASH_LENGTH] {
         Self::hash_node_pair::<H>(
@@ -56,7 +75,7 @@ impl WinternitzPubkey {
     }
 
     #[inline]
-    fn hash_leaf_pair<H: Hash>(&self, i: usize) -> [u8; HASH_LENGTH] {
+    pub fn hash_leaf_pair<H: Hash>(&self, i: usize) -> [u8; HASH_LENGTH] {
         H::hashv(&[&self.data[i], &self.data[i + 1]])
     }
 
@@ -69,7 +88,7 @@ impl WinternitzPubkey {
     }
 
     #[inline]
-    fn merklize_eighth<H: Hash>(&self, start_idx: usize) -> [u8; HASH_LENGTH] {
+    pub fn merklize_eighth<H: Hash>(&self, start_idx: usize) -> [u8; HASH_LENGTH] {
         let h1 = self.hash_leaf_pair::<H>(start_idx);
         let h2 = self.hash_leaf_pair::<H>(start_idx + 2);
         Self::hash_node_pair::<H>(&h1, &h2)

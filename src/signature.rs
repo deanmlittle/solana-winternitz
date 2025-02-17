@@ -1,14 +1,14 @@
 use core::fmt::Write;
 use core::mem::MaybeUninit;
+use crate::hash::Hash;
+use crate::pubkey::WinternitzPubkey;
 
 use solana_nostd_keccak::HASH_LENGTH;
-
-use crate::{hash::Hash, pubkey::WinternitzPubkey};
 
 #[repr(C)]
 #[derive(PartialEq)]
 pub struct WinternitzSignature {
-    data: [[u8; HASH_LENGTH]; 32],
+    pub data: [[u8; HASH_LENGTH]; 32],
 }
 
 impl From<[[u8; HASH_LENGTH]; 32]> for WinternitzSignature {
@@ -46,7 +46,12 @@ impl core::fmt::Debug for WinternitzSignature {
 impl WinternitzSignature {
     pub fn recover_pubkey<H: Hash>(&self, message: &[u8]) -> WinternitzPubkey {
         let digest = H::hash(message);
-        let digest_iter = digest.iter().take(32); // Always take 32 items as that's our fixed outer dimension
+        self.recover_pubkey_prehashed::<H>(&digest)
+    }
+
+    #[inline(always)]
+    pub fn recover_pubkey_prehashed<H: Hash>(&self, hash: &[u8;32]) -> WinternitzPubkey {
+        let digest_iter = hash.iter().take(32); // Always take 32 items as that's our fixed outer dimension
 
         let mut signature = MaybeUninit::<[[u8; HASH_LENGTH]; 32]>::uninit();
         let signature_ptr = signature.as_mut_ptr() as *mut [u8; HASH_LENGTH];

@@ -55,10 +55,10 @@ let address = pubkey.address::<WinternitzKeccak>();
 
 ```rust
 // Split the signature for more efficient verification
-let (pairing_hash, prime, execute) = signature.split::<WinternitzKeccak>(message);
+let (pairing_hash, commitment, execute) = signature.split::<WinternitzKeccak>(message);
 
-// Recover the address using only the prime part
-let recovered_address = prime.recover_address::<WinternitzKeccak>(message, &pairing_hash);
+// Recover the address using only the commitment part
+let recovered_address = commitment.recover_address::<WinternitzKeccak>(message, &pairing_hash);
 
 // Recover the pairing hash using only the execute part
 let recovered_pairing_hash = execute.recover_pairing_hash::<WinternitzKeccak>(message);
@@ -84,7 +84,7 @@ let parsed_address = WinternitzAddress::try_from(address_str.as_str()).unwrap();
 - `WinternitzPrivkey`: Private key structure containing 32 32-byte seeds
 - `WinternitzPubkey`: Public key structure containing 32 32-byte values
 - `WinternitzSignature`: Full signature structure containing 32 32-byte values
-- `WinternitzPrimeSignature`: Partial signature containing 28 32-byte values
+- `WinternitzCommitmentSignature`: Partial signature containing 28 32-byte values
 - `WinternitzExecuteSignature`: Partial signature containing 4 32-byte values
 - `WinternitzAddress`: 32-byte address value with Base58 encoding/decoding
 

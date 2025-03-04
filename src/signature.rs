@@ -12,9 +12,9 @@ impl From<[[u8; 32]; 32]> for WinternitzSignature {
 
 #[repr(C)]
 #[derive(PartialEq)]
-pub struct WinternitzPrimeSignature(pub [[u8; 32]; 28]);
+pub struct WinternitzCommitmentSignature(pub [[u8; 32]; 28]);
 
-impl WinternitzPrimeSignature {
+impl WinternitzCommitmentSignature {
     pub fn recover_address<H: WinternitzHash>(&self, message: &[u8], pairing_hash: &[u8;32]) -> WinternitzAddress {
         let v = H::hashd(message);
 
@@ -113,10 +113,10 @@ impl WinternitzSignature {
     pub fn split<H: WinternitzHash>(
         &self,
         message: &[u8],
-    ) -> ([u8;32], WinternitzPrimeSignature, WinternitzExecuteSignature) {
+    ) -> ([u8;32], WinternitzCommitmentSignature, WinternitzExecuteSignature) {
         let pairing_hash = self.recover_pubkey::<H>(message).pairing_hash::<H>();
 
-        let prime = WinternitzPrimeSignature([
+        let commitment = WinternitzCommitmentSignature([
             self.0[0],
             self.0[1],
             self.0[2],
@@ -149,10 +149,10 @@ impl WinternitzSignature {
 
         let execute = WinternitzExecuteSignature([self.0[28], self.0[29], self.0[30], self.0[31]]);
 
-        (pairing_hash, prime, execute)
+        (pairing_hash, commitment, execute)
     }
 }
 
 winternitz_debug!(WinternitzSignature, "WinternitzSignature");
-winternitz_debug!(WinternitzPrimeSignature, "WinternitzPrimeSignature");
+winternitz_debug!(WinternitzCommitmentSignature, "WinternitzCommitmentSignature");
 winternitz_debug!(WinternitzExecuteSignature, "WinternitzExecuteSignature");

@@ -1,28 +1,54 @@
-use crate::HASH_LENGTH;
-
-pub trait Hash {
-    fn hash(data: &[u8]) -> [u8; HASH_LENGTH];
-    fn hashv(data: &[&[u8]]) -> [u8; HASH_LENGTH];
+pub trait WinternitzHash {
+    fn hash(msg: &[u8]) -> [u8; 32];
+    fn hashd(msg: &[u8]) -> [u8; 32];
+    fn hashv(msg: &[&[u8]]) -> [u8; 32];
+    fn hash_pair(a: &[u8], b: &[u8]) -> [u8; 32];
 }
 
-pub struct Sha256;
-impl Hash for Sha256 {
-    fn hash(data: &[u8]) -> [u8; HASH_LENGTH] {
-        solana_nostd_sha256::hash(data)
+pub struct WinternitzKeccak;
+
+impl WinternitzHash for WinternitzKeccak {
+    #[inline(always)]
+    fn hash(msg: &[u8]) -> [u8; 32] {
+        solana_nostd_keccak::hash(msg)
     }
 
-    fn hashv(data: &[&[u8]]) -> [u8; HASH_LENGTH] {
-        solana_nostd_sha256::hashv(data)
+    #[inline(always)]
+    fn hashd(msg: &[u8]) -> [u8; 32] {
+        Self::hash(&Self::hash(msg))
+    }
+
+    #[inline(always)]
+    fn hashv(msg: &[&[u8]]) -> [u8; 32] {
+        solana_nostd_keccak::hashv(msg)
+    }
+
+    #[inline(always)]
+    fn hash_pair(a: &[u8], b: &[u8]) -> [u8; 32] {
+        Self::hashv(&[a, b])
     }
 }
 
-pub struct Keccak;
-impl Hash for Keccak {
-    fn hash(data: &[u8]) -> [u8; HASH_LENGTH] {
-        solana_nostd_keccak::hash(data)
+pub struct WinternitzSha256;
+
+impl WinternitzHash for WinternitzSha256 {
+    #[inline(always)]
+    fn hash(msg: &[u8]) -> [u8; 32] {
+        solana_nostd_sha256::hash(msg)
     }
 
-    fn hashv(data: &[&[u8]]) -> [u8; HASH_LENGTH] {
-        solana_nostd_keccak::hashv(data)
+    #[inline(always)]
+    fn hashd(msg: &[u8]) -> [u8; 32] {
+        Self::hash(&Self::hash(msg))
+    }
+
+    #[inline(always)]
+    fn hashv(msg: &[&[u8]]) -> [u8; 32] {
+        solana_nostd_sha256::hashv(msg)
+    }
+
+    #[inline(always)]
+    fn hash_pair(a: &[u8], b: &[u8]) -> [u8; 32] {
+        Self::hashv(&[a, b])
     }
 }

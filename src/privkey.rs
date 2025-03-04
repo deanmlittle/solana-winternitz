@@ -1,94 +1,89 @@
+use core::str::FromStr;
+
+use bip32::{DerivationPath, Seed, XPrv};
+use rand::random;
+
 use crate::{
-    hash::Hash, pubkey::WinternitzPubkey, signature::WinternitzSignature, HASH_LENGTH, KEY_LENGTH,
+    hash::WinternitzHash, pubkey::WinternitzPubkey, signature::WinternitzSignature,
+    winternitz_debug,
 };
-use core::fmt::Write;
-use core::mem::MaybeUninit;
-use rand::Rng;
 
-#[repr(C)]
-pub struct WinternitzPrivkey {
-    data: [[u8; HASH_LENGTH]; 32],
-}
+pub struct WinternitzPrivkey(pub [[u8; 32]; 32]);
 
-impl core::fmt::Debug for WinternitzPrivkey {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_tuple("WinternitzPrivkey")
-            .field(
-                &self
-                    .data
-                    .iter()
-                    .map(|hash| {
-                        hash.iter()
-                            .fold(String::with_capacity(HASH_LENGTH * 2), |mut acc, byte| {
-                                write!(acc, "{:02x}", byte).unwrap();
-                                acc
-                            })
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .finish()
-    }
-}
-
-impl Default for WinternitzPrivkey {
-    fn default() -> Self {
-        Self::generate()
-    }
-}
-
-impl From<[u8; KEY_LENGTH]> for WinternitzPrivkey {
-    fn from(value: [u8; KEY_LENGTH]) -> Self {
+impl From<[[u8; 32]; 32]> for WinternitzPrivkey {
+    fn from(value: [[u8; 32]; 32]) -> Self {
         unsafe { core::mem::transmute(value) }
     }
 }
 
-impl From<[[u8; HASH_LENGTH]; 32]> for WinternitzPrivkey {
-    fn from(seeds: [[u8; HASH_LENGTH]; 32]) -> Self {
-        Self { data: seeds }
-    }
-}
-
 impl WinternitzPrivkey {
+    #[inline(always)]
     pub fn generate() -> Self {
-        let mut rng = rand::rng();
-        // Generate 32 arrays of 32 random bytes each
-        let seeds: [[u8; HASH_LENGTH]; 32] = rng.random();
-        Self { data: seeds }
+        WinternitzPrivkey(random())
     }
 
-    pub fn pubkey<H: Hash>(&self) -> WinternitzPubkey {
-        let result: [[u8; HASH_LENGTH]; 32] = self.data.map(|seed| {
-            let mut hashed_value: [u8; HASH_LENGTH] = H::hash(&seed);
-            for _ in 0..255 {
-                hashed_value = H::hash(&hashed_value);
+    pub fn from_seed(seed: [u8;64], path: &str) -> Result<Self, bip32::Error> {
+        let root = XPrv::derive_from_path(&Seed::new(seed), &DerivationPath::from_str(path)?)?;
+        Ok(Self([
+            root.derive_child(bip32::ChildNumber(0))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(1))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(2))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(3))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(4))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(5))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(6))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(7))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(8))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(9))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(10))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(11))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(12))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(13))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(14))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(15))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(16))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(17))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(18))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(19))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(20))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(21))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(22))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(23))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(24))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(25))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(26))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(27))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(28))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(29))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(30))?.private_key().to_bytes().into(),
+            root.derive_child(bip32::ChildNumber(31))?.private_key().to_bytes().into(),
+        ]))
+    }
+        
+    #[inline(always)]
+    pub fn sign<H: WinternitzHash>(&self, message: &[u8]) -> WinternitzSignature {
+        let v: [u8; 32] = H::hashd(message);
+        let mut sig: WinternitzSignature = self.0.into();
+        for (i, v) in v.iter().enumerate() {
+            sig.0[i] = H::hash(&sig.0[i]);
+            for _ in 0..!*v {
+                sig.0[i] = H::hash(&sig.0[i]);
             }
-            hashed_value[..HASH_LENGTH]
-                .try_into()
-                .expect("Invalid length")
-        });
-        WinternitzPubkey::from(result)
+        }
+        sig
     }
 
-    pub fn sign<H: Hash>(&self, message: &[u8]) -> WinternitzSignature {
-        let digest = H::hash(message);
-
-        let mut signature = MaybeUninit::<[[u8; HASH_LENGTH]; 32]>::uninit();
-        let signature_ptr = signature.as_mut_ptr() as *mut [u8; HASH_LENGTH];
-
-        digest
-            .iter()
-            .zip(self.data.iter())
-            .enumerate()
-            .for_each(|(i, (n, seed))| {
-                let mut hashed_value: [u8; HASH_LENGTH] = H::hash(seed);
-                for _ in 0..(!n as usize) {
-                    hashed_value = H::hash(&hashed_value)
-                }
-                unsafe {
-                    signature_ptr.add(i).write(hashed_value);
-                }
-            });
-
-        WinternitzSignature::from(unsafe { signature.assume_init() })
+    #[inline(always)]
+    pub fn pubkey<H: WinternitzHash>(&self) -> WinternitzPubkey {
+        let mut pubkey: WinternitzPubkey = self.0.into();
+        for i in 0..32 {
+            pubkey.0[i] = H::hash(&pubkey.0[i]);
+            for _ in 0..255 {
+                pubkey.0[i] = H::hash(&pubkey.0[i]);
+            }
+        }
+        pubkey
     }
 }
+
+winternitz_debug!(WinternitzPrivkey, "WinternitzPubkey");

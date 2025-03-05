@@ -1,5 +1,5 @@
 use crate::{
-    address::WinternitzAddress, hash::WinternitzKeccak, privkey::{self, WinternitzPrivkey},
+    address::WinternitzAddress, hash::WinternitzKeccak, privkey::WinternitzPrivkey,
     pubkey::WinternitzPubkey,
 };
 

@@ -1,5 +1,5 @@
 use crate::{
-    address::WinternitzAddress, hash::WinternitzKeccak, privkey::WinternitzPrivkey,
+    address::WinternitzAddress, hash::{WinternitzKeccak, WinternitzHash}, privkey::WinternitzPrivkey,
     pubkey::WinternitzPubkey,
 };
 
@@ -356,7 +356,7 @@ fn test_keygen() {
 fn test_split_signature() {
     let signature = PRIVKEY.sign::<WinternitzKeccak>(MESSAGE);
     let (pairing_hash, commitment, execute) = signature.split::<WinternitzKeccak>(MESSAGE);
-    let address_recovered = commitment.recover_address::<WinternitzKeccak>(MESSAGE, &pairing_hash);
+    let address_recovered = commitment.recover_address::<WinternitzKeccak>(&WinternitzKeccak::hash(&MESSAGE), &pairing_hash);
     assert_eq!(ADDRESS, address_recovered.to_array_string().as_str());
     let pairing_hash_recovered = execute.recover_pairing_hash::<WinternitzKeccak>(MESSAGE);
     assert_eq!(pairing_hash, pairing_hash_recovered);

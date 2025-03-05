@@ -15,8 +15,8 @@ impl From<[[u8; 32]; 32]> for WinternitzSignature {
 pub struct WinternitzCommitmentSignature(pub [[u8; 32]; 28]);
 
 impl WinternitzCommitmentSignature {
-    pub fn recover_address<H: WinternitzHash>(&self, message: &[u8], pairing_hash: &[u8;32]) -> WinternitzAddress {
-        let v = H::hashd(message);
+    pub fn recover_address<H: WinternitzHash>(&self, state_hash: &[u8], pairing_hash: &[u8;32]) -> WinternitzAddress {
+        let v = H::hash(state_hash);
 
         let mut h = self.0;
 
